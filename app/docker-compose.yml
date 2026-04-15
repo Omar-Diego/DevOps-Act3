@@ -4,3 +4,28 @@ services:
     build: ./app
     ports:
       - "5000:5000"
+    # Seguridad: Sistema de archivos de solo lectura
+    read_only: true
+    # Seguridad: Eliminar todos los privilegios
+    security_opt:
+      - no-new-privileges:true
+    # Seguridad: Límites de recursos
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    # Seguridad: Verificación de salud del contenedor
+    healthcheck:
+      test: ["CMD", "python", "-m", "flask", "--app", "app:app", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # Variables de entorno para seguridad
+    environment:
+      - FLASK_DEBUG=false
+      - FLASK_ENV=production
