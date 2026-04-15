@@ -1,4 +1,4 @@
-FROM python:3.9-slim@sha256:1a599605eddfabcc3b1772fe2e389df0b6164ae171f25bafdf37b42aa1527ef9
+FROM python:3.9-slim
 
 # Seguridad: Crear usuario y grupo no-root
 RUN groupadd --gid 1000 appgroup && \
