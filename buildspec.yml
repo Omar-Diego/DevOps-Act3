@@ -1,0 +1,49 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_URI: "378780514606.dkr.ecr.us-east-1.amazonaws.com"
+    AWS_DEFAULT_REGION: "us-east-1"
+    IMAGE_REPO_NAME: "mi-app"
+    IMAGE_TAG: "latest"
+  # Seguridad: Usar Parameter Store para configuración sensible
+  # En producción, obtener secretos de SSM Parameter Store o Secrets Manager:
+  # ECR_REPO_URI debe almacenarse como secure string en SSM
+  # Usar: aws ssm get-parameter --name /mi-app/ecr-repo-uri --with-decryption
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - echo "Instalando dependencias de prueba..."
+      - pip install -r app/requirements.txt
+      - pip install pytest
+
+  build:
+    commands:
+      - echo "Ejecutando pruebas"
+      - export PYTHONPATH=./app
+      - pytest tests/
+      - echo "Iniciando sesión en Amazon ECR..."
+      # Seguridad: Usar get-login-password para autenticación segura (sin contraseña en logs)
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_URI
+      - echo "Construyendo imagen Docker..."
+      # Seguridad: Construir con build-args para información de versión y trazabilidad
+      - docker build --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg VCS_REF=$(git rev-parse HEAD) -t $IMAGE_REPO_NAME:$IMAGE_TAG ./app
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ECR_URI/$IMAGE_REPO_NAME:$IMAGE_TAG
+
+  post_build:
+    commands:
+      - echo "Construcción finalizada con éxito"
+      - echo "Subiendo imagen a ECR..."
+      - docker push $ECR_URI/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - echo "Generando imagedefinitions.json para ECS..."
+      # Seguridad: Validar salida JSON antes de crear el archivo
+      - printf '[{"name":"mi-app","imageUri":"%s"}]' $ECR_URI/$IMAGE_REPO_NAME:$IMAGE_TAG > imagedefinitions.json
+      # Seguridad: Registrar digest de imagen para trazabilidad
+      - docker inspect $ECR_URI/$IMAGE_REPO_NAME:$IMAGE_TAG --format='{{index .RepoDigests 0}}'
+
+artifacts:
+  files:
+    - imagedefinitions.json

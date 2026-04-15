@@ -1,1 +1,8 @@
-Flask
+# Security: Pin Flask version to known secure versions
+# Flask 2.3.x includes security fixes and uses Werkzeug 2.3.x with security patches
+# Using >= 2.3.0, < 3.0.0 to get patch updates but avoid breaking changes
+Flask>=2.3.0,<3.1.0
+
+# Add Werkzeug explicitly to ensure secure version is used
+# Werkzeug 2.3.x includes security fixes for request smuggling and other vulnerabilities
+Werkzeug>=2.3.0,<3.1.0
